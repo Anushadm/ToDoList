@@ -1,6 +1,7 @@
 To-Do List Web App
 Project Overview
 This is a lightweight and intuitive To-Do List web application designed to help users efficiently manage their daily tasks. Developed using HTML, Tailwind CSS, and JavaScript, it offers a clean user interface and essential productivity features, including offline support.
+Here I'm used the embedded code means writing CSS and JavaScript directly inside the HTML file using <style> and <script> tags. It keeps all the code in one file, making it simple and easy to manage, especially for small projects or beginners learning web development.
 
 Problem Statement: 
 Many existing productivity applications can be either overly complex or too simplistic, failing to provide a balanced and functional solution for daily task management. Users often need a straightforward platform to organize their tasks without unnecessary bloat, ensuring efficient tracking and completion.
