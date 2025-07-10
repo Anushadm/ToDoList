@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List App</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the Inter font and general body */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #e1bcf0; /* Light gray background fallback */
+            /* Background Image Properties */
+            background-image: url('https://wallpapers.com/images/hd/cute-desktop-organizer-october-to-do-list-7b0rwkvxpvavpcaw.jpg'); /* Placeholder image */
+            background-size: cover; /* Cover the entire background area */
+            background-repeat: no-repeat; /* Do not repeat the image */
+            background-position: center center; /* Center the image */
+            background-attachment: fixed; /* Make the background fixed w
+
+        }
+        
+        /* Hide scrollbar for elements if needed, example for a div */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-3">
+    <div class="bg-darkviolet p-6 md:p-8 rounded-xl shadow-2xl w-full max-w-lg">
+        <h1 class="text-3xl font-extrabold text-center text-gray-900 mb-6">My To-Do List</h1>
+
+        <!-- Task Input Section -->
+        <div class="flex flex-col sm:flex-row gap-3 mb-6">
+            <input
+                type="text"
+                id="newTaskInput"
+                placeholder="Add a new task..."
+                class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+            />
+            <button
+                id="addTaskBtn"
+                class="bg-blue-600 text-white p-3 rounded-lg shadow-md hover:bg-blue-700 transition duration-300 ease-in-out transform hover:scale-105 font-semibold"
+            >
+                Add Task
+            </button>
+        </div>
+
+        <!-- Filter Buttons -->
+        <div class="flex justify-center space-x-3 mb-6">
+            <button
+                id="filterAllBtn"
+                class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium transition duration-200"
+                data-filter="all"
+            >
+                All
+            </button>
+            <button
+                id="filterPendingBtn"
+                class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium transition duration-200"
+                data-filter="pending"
+            >
+                Pending
+            </button>
+            <button
+                id="filterCompletedBtn"
+                class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium transition duration-200"
+                data-filter="completed"
+            >
+                Completed
+            </button>
+        </div>
+
+        <!-- Task List -->
+        <ul id="taskList" class="space-y-4 max-h-80 overflow-y-auto hide-scrollbar pb-2">
+            <!-- Tasks will be dynamically added here -->
+        </ul>
+
+        <!-- Edit Task Modal (Hidden by default) -->
+        <div id="editModal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center p-4 hidden">
+            <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Edit Task</h2>
+                <input
+                    type="text"
+                    id="editTaskInput"
+                    class="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+                />
+                <div class="flex justify-end space-x-3">
+                    <button
+                        id="saveEditBtn"
+                        class="bg-green-600 text-white px-5 py-2 rounded-lg shadow-md hover:bg-green-700 transition duration-300 font-semibold"
+                    >
+                        Save
+                    </button>
+                    <button
+                        id="cancelEditBtn"
+                        class="bg-gray-400 text-white px-5 py-2 rounded-lg shadow-md hover:bg-gray-500 transition duration-300 font-semibold"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const newTaskInput = document.getElementById('newTaskInput');
+        const addTaskBtn = document.getElementById('addTaskBtn');
+        const taskList = document.getElementById('taskList');
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        const editModal = document.getElementById('editModal');
+        const editTaskInput = document.getElementById('editTaskInput');
+        const saveEditBtn = document.getElementById('saveEditBtn');
+        const cancelEditBtn = document.getElementById('cancelEditBtn');
+
+        // Global Variables
+        let tasks = []; // Array to store task objects
+        let currentFilter = 'all'; // 'all', 'pending', 'completed'
+        let editingTaskId = null; // Stores the ID of the task being edited
+
+        /**
+         * Loads tasks from localStorage.
+         * @returns {void}
+         */
+        function loadTasks() {
+            const storedTasks = localStorage.getItem('tasks');
+            if (storedTasks) {
+                tasks = JSON.parse(storedTasks);
+            }
+            renderTasks();
+        }
+
+        /**
+         * Saves tasks to localStorage.
+         * @returns {void}
+         */
+        function saveTasks() {
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+        }
+
+        /**
+         * Generates a unique ID for a new task.
+         * @returns {string} A unique ID.
+         */
+        function generateUniqueId() {
+            return '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        /**
+         * Formats a date object into a readable string.
+         * @param {Date} date - The date object to format.
+         * @returns {string} Formatted date string.
+         */
+        function formatTimestamp(date) {
+            const options = {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            };
+            return date.toLocaleString('en-US', options);
+        }
+
+        /**
+         * Adds a new task to the list.
+         * @returns {void}
+         */
+        function addTask() {
+            const taskText = newTaskInput.value.trim();
+            if (taskText === '') {
+                // In a real app, you might show a visual cue instead of console log
+                console.log('Task cannot be empty.');
+                return;
+            }
+
+            const newTask = {
+                id: generateUniqueId(),
+                text: taskText,
+                completed: false,
+                timestamp: new Date().toISOString() // Store as ISO string for consistency
+            };
+
+            tasks.push(newTask);
+            saveTasks();
+            newTaskInput.value = ''; // Clear input field
+            renderTasks();
+        }
+
+        /**
+         * Renders the tasks to the UI based on the current filter.
+         * @returns {void}
+         */
+        function renderTasks() {
+            taskList.innerHTML = ''; // Clear existing tasks
+
+            const filteredTasks = tasks.filter(task => {
+                if (currentFilter === 'all') {
+                    return true;
+                } else if (currentFilter === 'pending') {
+                    return !task.completed;
+                } else if (currentFilter === 'completed') {
+                    return task.completed;
+                }
+            });
+
+            if (filteredTasks.length === 0) {
+                const noTasksMessage = document.createElement('li');
+                noTasksMessage.className = 'text-center text-gray-500 py-4';
+                noTasksMessage.textContent = `No ${currentFilter} tasks to display.`;
+                taskList.appendChild(noTasksMessage);
+            } else {
+                filteredTasks.forEach(task => {
+                    const listItem = document.createElement('li');
+                    listItem.className = `flex items-center justify-between bg-gray-50 p-4 rounded-lg shadow-sm transition-all duration-200 ${task.completed ? 'opacity-70 line-through' : ''}`;
+                    listItem.dataset.id = task.id; // Store task ID on the element
+
+                    // Task Text and Timestamp
+                    const textContainer = document.createElement('div');
+                    textContainer.className = 'flex flex-col flex-grow mr-4';
+
+                    const taskSpan = document.createElement('span');
+                    taskSpan.className = `text-lg font-medium text-gray-800 ${task.completed ? 'text-gray-500' : ''}`;
+                    taskSpan.textContent = task.text;
+
+                    const timestampSpan = document.createElement('span');
+                    timestampSpan.className = 'text-xs text-gray-400 mt-1';
+                    try {
+                        timestampSpan.textContent = formatTimestamp(new Date(task.timestamp));
+                    } catch (e) {
+                        timestampSpan.textContent = 'Invalid Date'; // Fallback for invalid dates
+                        console.error('Error parsing timestamp:', task.timestamp, e);
+                    }
+
+
+                    textContainer.appendChild(taskSpan);
+                    textContainer.appendChild(timestampSpan);
+
+                    // Actions Container
+                    const actionsContainer = document.createElement('div');
+                    actionsContainer.className = 'flex items-center space-x-2';
+
+                    // Mark Complete Checkbox
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = task.completed;
+                    checkbox.className = 'form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500 transition duration-150 ease-in-out';
+                    checkbox.onclick = () => toggleTaskComplete(task.id);
+
+                    // Edit Button
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'bg-yellow-500 text-white p-2 rounded-full hover:bg-yellow-600 transition duration-300 ease-in-out transform hover:scale-110';
+                    editBtn.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-3.586 3.586l-7.793 7.793V17h2.828l7.793-7.793-2.828-2.828z" />
+                        </svg>
+                    `;
+                    editBtn.onclick = () => showEditModal(task.id);
+
+                    // Delete Button
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition duration-300 ease-in-out transform hover:scale-110';
+                    deleteBtn.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm6 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" />
+                        </svg>
+                    `;
+                    deleteBtn.onclick = () => deleteTask(task.id);
+
+                    actionsContainer.appendChild(checkbox);
+                    actionsContainer.appendChild(editBtn);
+                    actionsContainer.appendChild(deleteBtn);
+
+                    listItem.appendChild(textContainer);
+                    listItem.appendChild(actionsContainer);
+                    taskList.appendChild(listItem);
+                });
+            }
+        }
+
+        /**
+         * Toggles the completion status of a task.
+         * @param {string} id - The ID of the task to toggle.
+         * @returns {void}
+         */
+        function toggleTaskComplete(id) {
+            const taskIndex = tasks.findIndex(task => task.id === id);
+            if (taskIndex > -1) {
+                tasks[taskIndex].completed = !tasks[taskIndex].completed;
+                saveTasks();
+                renderTasks();
+            }
+        }
+
+        /**
+         * Deletes a task from the list.
+         * @param {string} id - The ID of the task to delete.
+         * @returns {void}
+         */
+        function deleteTask(id) {
+            // In a real app, you might show a confirmation dialog
+            tasks = tasks.filter(task => task.id !== id);
+            saveTasks();
+            renderTasks();
+        }
+
+        /**
+         * Displays the edit modal with the current task text.
+         * @param {string} id - The ID of the task to edit.
+         * @returns {void}
+         */
+        function showEditModal(id) {
+            editingTaskId = id;
+            const taskToEdit = tasks.find(task => task.id === id);
+            if (taskToEdit) {
+                editTaskInput.value = taskToEdit.text;
+                editModal.classList.remove('hidden');
+            }
+        }
+
+        /**
+         * Hides the edit modal.
+         * @returns {void}
+         */
+        function hideEditModal() {
+            editingTaskId = null;
+            editTaskInput.value = '';
+            editModal.classList.add('hidden');
+        }
+
+        /**
+         * Saves the edited task text.
+         * @returns {void}
+         */
+        function saveEditedTask() {
+            const newText = editTaskInput.value.trim();
+            if (newText === '') {
+                console.log('Task text cannot be empty.');
+                return;
+            }
+
+            const taskIndex = tasks.findIndex(task => task.id === editingTaskId);
+            if (taskIndex > -1) {
+                tasks[taskIndex].text = newText;
+                saveTasks();
+                renderTasks();
+            }
+            hideEditModal();
+        }
+
+        /**
+         * Sets the current filter and re-renders tasks.
+         * @param {string} filter - The filter type ('all', 'pending', 'completed').
+         * @returns {void}
+         */
+        function setFilter(filter) {
+            currentFilter = filter;
+            filterButtons.forEach(button => {
+                if (button.dataset.filter === filter) {
+                    button.classList.add('bg-blue-500', 'text-white', 'shadow-md');
+                    button.classList.remove('bg-gray-200', 'text-gray-700');
+                } else {
+                    button.classList.remove('bg-blue-500', 'text-white', 'shadow-md');
+                    button.classList.add('bg-gray-200', 'text-gray-700');
+                }
+            });
+            renderTasks();
+        }
+
+        // Event Listeners
+        addTaskBtn.addEventListener('click', addTask);
+        newTaskInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addTask();
+            }
+        });
+
+        filterButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                setFilter(button.dataset.filter);
+            });
+        });
+
+        saveEditBtn.addEventListener('click', saveEditedTask);
+        cancelEditBtn.addEventListener('click', hideEditModal);
+
+        // Initial Load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTasks();
+            setFilter('all'); // Set initial filter state and styling
+        });
+    </script>
+</body>
+</html>
